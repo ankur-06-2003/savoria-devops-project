@@ -1,0 +1,68 @@
+pipeline {
+  agent any
+
+  environment {
+    IMAGE_NAME = "raosahab153/savoria"
+    IMAGE_TAG  = "${1.0}"
+    KUBE_NAMESPACE = "savoria"
+  }
+
+  stages {
+
+    stage('Checkout Code') {
+      steps {
+        git branch: 'main',
+            url: 'https://github.com/ankur-06-2003/savoria-devops-project.git'
+      }
+    }
+
+    stage('Build Docker Image') {
+      steps {
+        script {
+            sh '''
+          
+          docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+            '''
+        }
+      }
+    }
+
+    stage('Push Image to Docker Hub') {
+      steps {
+        withCredentials([usernamePassword(
+          credentialsId: 'dockerhub-creds',
+          usernameVariable: 'DOCKER_USER',
+          passwordVariable: 'DOCKER_PASS'
+        )]) {
+          sh """
+            echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin
+            docker push ${IMAGE_NAME}:${IMAGE_TAG}
+          """
+        }
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+          sh """
+            kubectl apply -f Savoria-restaurant/kubernetes/namespace.yml -n ${KUBE_NAMESPACE}
+            kubectl apply -f Savoria-restaurant/kubernetes/frontend-deployment.yml -n ${KUBE_NAMESPACE}
+            kubectl apply -f Savoria-restaurant/kubernetes/frontend-service.yml -n ${KUBE_NAMESPACE}
+            kubectl apply -f Savoria-restaurant/kubernetes/ingress.yml -n ${KUBE_NAMESPACE}
+            
+          """
+        }
+      }
+    }
+  }
+
+  post {
+    success {
+      echo " Savoria Frontend deployed successfully"
+    }
+    failure {
+      echo " Pipeline failed"
+    }
+  }
+}
