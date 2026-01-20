@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: savoria-deployment
+  namespace: savoria
+  labels:
+    app: savoria
+
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: savoria
+  template:  
+    metadata:
+      
+      labels:
+        app: savoria
+    spec:
+      containers:
+        - name: savoria-1
+          image: raosahab153/savoria:1.0
+          ports:
+          - containerPort: 80
+
+
